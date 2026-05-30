@@ -1,5 +1,7 @@
 from __future__ import annotations
 
+import logging
+import re
 import shutil
 import subprocess
 import tempfile
@@ -23,6 +25,23 @@ from app.services.uploads import (
 
 router = APIRouter()
 templates = Jinja2Templates(directory="app/templates")
+logger = logging.getLogger("md_convert")
+SAFE_DOWNLOAD_CHARS = re.compile(r"[^A-Za-z0-9._-]+")
+
+
+def safe_join_under(base_dir: Path, relative_path: Path) -> Path:
+    """Join and validate that resulting path stays inside base_dir."""
+    base_resolved = base_dir.resolve()
+    candidate = (base_dir / relative_path).resolve()
+    if base_resolved not in (candidate, *candidate.parents):
+        raise HTTPException(status_code=400, detail="Invalid upload path.")
+    return candidate
+
+
+def sanitize_download_stem(stem: str) -> str:
+    """Normalize download filename stem to a conservative safe charset."""
+    sanitized = SAFE_DOWNLOAD_CHARS.sub("_", stem).strip("._-")
+    return sanitized or "converted-output"
 
 
 @router.get("/", response_class=HTMLResponse)
@@ -81,7 +100,7 @@ async def convert(
 
         if project_zip:
             zip_rel = sanitize_relative_path(project_zip.filename or "project.zip")
-            zip_target = temp_dir / zip_rel.name
+            zip_target = safe_join_under(temp_dir, Path(zip_rel.name))
             total_written += await save_upload(project_zip, zip_target, MAX_FILE_BYTES)
             if total_written > MAX_TOTAL_BYTES:
                 raise HTTPException(
@@ -100,7 +119,7 @@ async def convert(
             main_rel = sanitize_relative_path(main_file.filename or "main.md")
             if main_rel.name == "upload.bin":
                 main_rel = Path("main.md")
-            main_path = temp_dir / main_rel
+            main_path = safe_join_under(temp_dir, main_rel)
             total_written += await save_upload(main_file, main_path, MAX_FILE_BYTES)
             if total_written > MAX_TOTAL_BYTES:
                 raise HTTPException(
@@ -109,13 +128,13 @@ async def convert(
                 )
         else:
             main_rel = pick_main_markdown(temp_dir)
-            main_path = temp_dir / main_rel
+            main_path = safe_join_under(temp_dir, main_rel)
 
         for upload in assets:
             rel_path = sanitize_relative_path(upload.filename or "asset.bin")
             if rel_path == main_rel:
                 continue
-            target = temp_dir / rel_path
+            target = safe_join_under(temp_dir, rel_path)
             total_written += await save_upload(upload, target, MAX_FILE_BYTES)
 
             if total_written > MAX_TOTAL_BYTES:
@@ -124,15 +143,29 @@ async def convert(
                     detail=f"Total upload exceeds {MAX_TOTAL_BYTES // (1024 * 1024)} MB.",
                 )
 
-        output_name = f"{main_path.stem}.{output_format}"
+        output_name = f"{sanitize_download_stem(main_path.stem)}.{output_format}"
         output_path = temp_dir / output_name
 
         command = build_pandoc_command(main_rel, output_name, output_format, template_path)
         result = run_pandoc(command, temp_dir)
 
         if result.returncode != 0 or not output_path.exists():
-            message = result.stderr.strip() or "Pandoc conversion failed."
-            raise HTTPException(status_code=400, detail=message)
+            request_id = getattr(request.state, "request_id", "unknown")
+            logger.warning(
+                "conversion_failed",
+                extra={
+                    "event": "conversion_failed",
+                    "request_id": request_id,
+                    "detail": result.stderr.strip() or "Pandoc conversion failed without stderr output.",
+                    "status_code": 400,
+                    "path": request.url.path,
+                    "method": request.method,
+                },
+            )
+            raise HTTPException(
+                status_code=400,
+                detail=f"Conversion failed. Contact the administrator with request ID: {request_id}",
+            )
 
         media_type = (
             "application/vnd.openxmlformats-officedocument.wordprocessingml.document"

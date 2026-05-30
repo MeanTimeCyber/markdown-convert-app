@@ -21,12 +21,43 @@ logger = logging.getLogger("md_convert")
 
 
 def get_client_ip(request: Request) -> str:
-    """Resolve the best-effort client IP, honoring proxy forwarding headers."""
+    """Resolve client IP, trusting forwarded headers only from trusted proxies."""
+    direct_ip = request.client.host if request.client and request.client.host else "unknown"
+
+    if not config.TRUST_PROXY_HEADERS:
+        return direct_ip
+
+    if config.TRUSTED_PROXY_IPS and direct_ip not in config.TRUSTED_PROXY_IPS:
+        return direct_ip
+
     forwarded = request.headers.get("x-forwarded-for", "")
     if forwarded:
         return forwarded.split(",")[0].strip()
-    if request.client and request.client.host:
-        return request.client.host
+
+    real_ip = request.headers.get("x-real-ip", "").strip()
+    if real_ip:
+        return real_ip
+
+    return direct_ip
+
+
+def _prune_rate_limit_store(cutoff: float) -> None:
+    """Bound memory usage by pruning expired/oldest rate-limit buckets."""
+    stale_keys = [ip for ip, bucket in _rate_limit_store.items() if not bucket or bucket[-1] < cutoff]
+    for ip in stale_keys:
+        _rate_limit_store.pop(ip, None)
+
+    overflow = len(_rate_limit_store) - config.MAX_RATE_LIMIT_BUCKETS
+    if overflow <= 0:
+        return
+
+    # Evict the least-recently-seen buckets first.
+    oldest_ips = sorted(
+        _rate_limit_store,
+        key=lambda ip: _rate_limit_store[ip][-1] if _rate_limit_store[ip] else 0,
+    )[:overflow]
+    for ip in oldest_ips:
+        _rate_limit_store.pop(ip, None)
     return "unknown"
 
 
@@ -35,12 +66,14 @@ def is_rate_limited(client_ip: str) -> bool:
     now = time.time()
     cutoff = now - config.RATE_LIMIT_WINDOW_SECONDS
     with _rate_limit_lock:
+        _prune_rate_limit_store(cutoff)
         bucket = _rate_limit_store.setdefault(client_ip, deque())
         while bucket and bucket[0] < cutoff:
             bucket.popleft()
         if len(bucket) >= config.RATE_LIMIT_MAX_REQUESTS:
             return True
         bucket.append(now)
+        _prune_rate_limit_store(cutoff)
     return False
 
 

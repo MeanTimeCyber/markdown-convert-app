@@ -118,6 +118,21 @@ def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.
     assert response.headers["x-request-id"]
 
 
+def test_convert_endpoint_sanitizes_download_filename(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("bad name<>.md", b"# title", "text/markdown")},
+    )
+
+    assert response.status_code == 200
+    content_disposition = response.headers.get("content-disposition", "")
+    assert "bad_name.docx" in content_disposition
+
+
 def test_convert_endpoint_accepts_zip_only(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     client = TestClient(app)
@@ -179,7 +194,7 @@ def test_convert_endpoint_returns_error_when_pandoc_fails(monkeypatch: pytest.Mo
     )
 
     assert response.status_code == 400
-    assert response.json()["detail"] == "boom"
+    assert response.json()["detail"].startswith("Conversion failed. Contact the administrator with request ID:")
 
 
 def test_convert_endpoint_requires_markdown_source() -> None:
@@ -192,6 +207,20 @@ def test_convert_endpoint_requires_markdown_source() -> None:
 
     assert response.status_code == 400
     assert response.json()["detail"] == "Provide a markdown file directly, or provide a ZIP containing one."
+
+
+def test_convert_endpoint_rejects_path_traversal_filename(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("/tmp/evil.md", b"# title", "text/markdown")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Invalid upload path."
 
 
 def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -240,6 +269,42 @@ def test_convert_endpoint_rate_limits_requests(monkeypatch: pytest.MonkeyPatch) 
     assert first.status_code == 200
     assert second.status_code == 429
     assert second.headers["retry-after"]
+
+
+def test_rate_limit_ignores_untrusted_x_forwarded_for(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
+    monkeypatch.setattr(config, "RATE_LIMIT_MAX_REQUESTS", 1)
+    monkeypatch.setattr(config, "TRUST_PROXY_HEADERS", True)
+    monkeypatch.setattr(config, "TRUSTED_PROXY_IPS", {"10.10.10.10"})
+    client = TestClient(app)
+
+    first = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("main.md", b"# first", "text/markdown")},
+        headers={"x-forwarded-for": "1.1.1.1"},
+    )
+    second = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("main.md", b"# second", "text/markdown")},
+        headers={"x-forwarded-for": "2.2.2.2"},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+
+
+def test_rate_limit_bucket_store_prunes_when_over_limit(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config, "MAX_RATE_LIMIT_BUCKETS", 2)
+    security_module._rate_limit_store.clear()
+
+    # Fill beyond configured cap to trigger pruning.
+    security_module.is_rate_limited("ip-1")
+    security_module.is_rate_limited("ip-2")
+    security_module.is_rate_limited("ip-3")
+
+    assert len(security_module._rate_limit_store) <= 2
 
 
 def test_convert_endpoint_uses_configured_template_when_enabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:

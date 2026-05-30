@@ -23,6 +23,16 @@ MAX_COMPRESSION_RATIO = 100
 RATE_LIMIT_WINDOW_SECONDS = 60
 # Max requests allowed from one IP within the rate limit window.
 RATE_LIMIT_MAX_REQUESTS = 30
+# Whether to trust X-Forwarded-For style proxy headers.
+TRUST_PROXY_HEADERS = os.getenv("TRUST_PROXY_HEADERS", "false").lower() in {"1", "true", "yes", "on"}
+# Comma-separated list of proxy source IPs/hosts trusted to set forwarded headers.
+TRUSTED_PROXY_IPS = {
+    part.strip()
+    for part in os.getenv("TRUSTED_PROXY_IPS", "").split(",")
+    if part.strip()
+}
+# Hard cap on unique IP buckets to limit memory growth under IP churn.
+MAX_RATE_LIMIT_BUCKETS = int(os.getenv("MAX_RATE_LIMIT_BUCKETS", "10000"))
 # Hard timeout applied to pandoc conversion subprocesses.
 REQUEST_TIMEOUT_SECONDS = 120
 # Default LaTeX engine used by pandoc for PDF output.
