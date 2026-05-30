@@ -7,14 +7,12 @@ import pytest
 from fastapi import HTTPException
 from fastapi.testclient import TestClient
 
-import app.main as main_module
-from app.main import (
-    app,
-    build_pandoc_command,
-    ensure_md_extension,
-    extract_zip_to_dir,
-    sanitize_relative_path,
-)
+from app import config
+from app.main import app
+from app.middleware import security as security_module
+import app.routes.convert as convert_routes
+from app.services.conversion import build_pandoc_command
+from app.services.uploads import ensure_md_extension, extract_zip_to_dir, sanitize_relative_path
 
 
 def _fake_pandoc_success(command: list[str], cwd: Path | str, **_: object) -> subprocess.CompletedProcess[str]:
@@ -24,9 +22,13 @@ def _fake_pandoc_success(command: list[str], cwd: Path | str, **_: object) -> su
     return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
 
 
+def _fake_run_pandoc(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
+    return _fake_pandoc_success(command, cwd)
+
+
 @pytest.fixture(autouse=True)
 def clear_rate_limit_state() -> None:
-    main_module._rate_limit_store.clear()
+    security_module._rate_limit_store.clear()
 
 
 def test_sanitize_relative_path_strips_parent_traversal() -> None:
@@ -82,7 +84,7 @@ def test_extract_zip_to_dir_rejects_suspicious_compression_ratio(tmp_path: Path)
 
 
 def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main_module.subprocess, "run", _fake_pandoc_success)
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     client = TestClient(app)
 
     response = client.post(
@@ -102,7 +104,7 @@ def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.
 
 
 def test_convert_endpoint_accepts_zip_only(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main_module.subprocess, "run", _fake_pandoc_success)
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     client = TestClient(app)
 
     archive_bytes = io.BytesIO()
@@ -123,10 +125,10 @@ def test_convert_endpoint_accepts_zip_only(monkeypatch: pytest.MonkeyPatch) -> N
 
 
 def test_convert_endpoint_returns_error_when_pandoc_fails(monkeypatch: pytest.MonkeyPatch) -> None:
-    def fake_fail(command: list[str], cwd: Path | str, **_: object) -> subprocess.CompletedProcess[str]:
+    def fake_fail(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=command, returncode=2, stdout="", stderr="boom")
 
-    monkeypatch.setattr(main_module.subprocess, "run", fake_fail)
+    monkeypatch.setattr(convert_routes, "run_pandoc", fake_fail)
     client = TestClient(app)
 
     response = client.post(
@@ -142,14 +144,14 @@ def test_convert_endpoint_returns_error_when_pandoc_fails(monkeypatch: pytest.Mo
 def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.MonkeyPatch) -> None:
     observed: dict[str, object] = {}
 
-    def fake_run(command: list[str], cwd: Path | str, **_: object) -> subprocess.CompletedProcess[str]:
+    def fake_run(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
         cwd_path = Path(cwd)
         observed["asset_exists"] = (cwd_path / "images/plot.png").exists()
         output_name = command[command.index("-o") + 1]
         (cwd_path / output_name).write_bytes(b"converted")
         return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
 
-    monkeypatch.setattr(main_module.subprocess, "run", fake_run)
+    monkeypatch.setattr(convert_routes, "run_pandoc", fake_run)
     client = TestClient(app)
 
     response = client.post(
@@ -167,8 +169,8 @@ def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.Monke
 
 
 def test_convert_endpoint_rate_limits_requests(monkeypatch: pytest.MonkeyPatch) -> None:
-    monkeypatch.setattr(main_module.subprocess, "run", _fake_pandoc_success)
-    monkeypatch.setattr(main_module, "RATE_LIMIT_MAX_REQUESTS", 1)
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
+    monkeypatch.setattr(config, "RATE_LIMIT_MAX_REQUESTS", 1)
     client = TestClient(app)
 
     first = client.post(
