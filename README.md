@@ -1,6 +1,6 @@
-# md-convert
+# Overview
 
-Simple web app for converting markdown to DOCX or PDF using pandoc.
+Simple web app for converting markdown to DOCX or PDF using pandoc. Built using GitHub Copilot. As sensibly as possible, but only suitable for running locally or on a private network.
 
 ## What this includes
 
@@ -94,6 +94,35 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - Use Dockerfile.base for rare TeX rebuilds and Dockerfile for fast app rebuilds.
 - You can override base image at build time: docker build --build-arg BASE_IMAGE=<tag> -t md-convert .
 - Security middleware: rate limiting, request IDs, and security headers are enabled by default.
+
+## Logging
+
+The app emits structured JSON logs and can write to a rotating log file.
+
+Environment variables:
+
+- `LOG_LEVEL` (default: `INFO`)
+- `LOG_TO_FILE` (default: `true`)
+- `LOG_FILE_PATH` (default: `/tmp/md-convert.log`)
+- `LOG_FILE_MAX_BYTES` (default: `10485760`, 10 MB)
+- `LOG_FILE_BACKUP_COUNT` (default: `5`)
+
+Example (local):
+
+`LOG_TO_FILE=true LOG_FILE_PATH=./logs/md-convert.log uvicorn app.main:app --reload`
+
+Example (Docker with persisted logs):
+
+`docker run --rm -p 8000:8000 -v $(pwd)/logs:/logs -e LOG_FILE_PATH=/logs/md-convert.log md-convert`
+
+Python logging best-practice details used in this app:
+
+- Centralized logger setup at startup (single source of truth).
+- Structured JSON log lines for machine parsing and search.
+- Rotation with bounded file size and backups to avoid unbounded disk growth.
+- Simultaneous console + file handlers so logs work in containers and local dev.
+- Named application logger (`md_convert`) with propagation disabled to avoid duplicate lines.
+- Request correlation fields (`request_id`, method/path, latency, status) included in each request log.
 
 ## Optional Build Cache
 
