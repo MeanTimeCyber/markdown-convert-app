@@ -46,7 +46,7 @@ def test_build_pandoc_command_for_docx() -> None:
 
 def test_build_pandoc_command_for_pdf_includes_engine() -> None:
     command = build_pandoc_command(Path("main.md"), "main.pdf", "pdf")
-    assert command == ["pandoc", "main.md", "-o", "main.pdf", "--pdf-engine", "tectonic"]
+    assert command == ["pandoc", "main.md", "-o", "main.pdf", "--pdf-engine", "xelatex"]
 
 
 def test_extract_zip_to_dir_sanitizes_member_paths(tmp_path: Path) -> None:

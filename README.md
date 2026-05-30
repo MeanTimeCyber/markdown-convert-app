@@ -10,6 +10,7 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - Optional ZIP package upload containing markdown + assets
 - Relative path preservation for uploaded asset folders
 - Docker setup with pandoc and tectonic for PDF output
+- Docker setup with pandoc and xelatex for PDF output
 
 ## Run with Docker
 
@@ -36,7 +37,7 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 
 ## Run locally
 
-1. Install pandoc and a PDF engine (tectonic recommended).
+1. Install pandoc and a PDF engine (xelatex recommended).
 2. Create virtual environment and install Python dependencies:
 
    python -m venv .venv
@@ -59,7 +60,8 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - Total upload limit per request: 100 MB.
 - Extracted ZIP content limit per request: 200 MB.
 - ZIP controls: max 2000 entries, max depth 12, symlinks blocked, high compression ratio blocked.
-- PDF conversion calls pandoc with --pdf-engine tectonic.
+- PDF conversion calls pandoc with --pdf-engine xelatex by default.
+- You can override the PDF engine with the PDF_ENGINE environment variable.
 - Security middleware: rate limiting, request IDs, and security headers are enabled by default.
 
 ## Run tests

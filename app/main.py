@@ -2,6 +2,7 @@ from __future__ import annotations
 
 import json
 import logging
+import os
 import time
 import uuid
 from collections import deque
@@ -32,6 +33,7 @@ MAX_COMPRESSION_RATIO = 100
 RATE_LIMIT_WINDOW_SECONDS = 60
 RATE_LIMIT_MAX_REQUESTS = 30
 REQUEST_TIMEOUT_SECONDS = 120
+PDF_ENGINE = os.getenv("PDF_ENGINE", "xelatex")
 
 _rate_limit_lock = threading.Lock()
 _rate_limit_store: dict[str, deque[float]] = {}
@@ -190,8 +192,7 @@ def build_pandoc_command(main_rel: Path, output_name: str, output_format: str) -
     ]
 
     if output_format == "pdf":
-        # If tectonic is available, this avoids depending on full TeXLive.
-        command.extend(["--pdf-engine", "tectonic"])
+        command.extend(["--pdf-engine", PDF_ENGINE])
 
     return command
 
