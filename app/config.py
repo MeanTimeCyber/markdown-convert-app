@@ -27,6 +27,16 @@ RATE_LIMIT_MAX_REQUESTS = 30
 REQUEST_TIMEOUT_SECONDS = 120
 # Default LaTeX engine used by pandoc for PDF output.
 PDF_ENGINE = os.getenv("PDF_ENGINE", "xelatex")
+# Minimum log level for application logs.
+LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO").upper()
+# Whether file logging should be enabled in addition to console logging.
+LOG_TO_FILE = os.getenv("LOG_TO_FILE", "true").lower() in {"1", "true", "yes", "on"}
+# File path for rotating application logs.
+LOG_FILE_PATH = os.getenv("LOG_FILE_PATH", "/tmp/md-convert.log")
+# Max bytes per log file before rotation.
+LOG_FILE_MAX_BYTES = int(os.getenv("LOG_FILE_MAX_BYTES", "10485760"))
+# Number of rotated log files to retain.
+LOG_FILE_BACKUP_COUNT = int(os.getenv("LOG_FILE_BACKUP_COUNT", "5"))
 # Optional template .docx file path for DOCX output styling.
 TEMPLATE_DOC_PATH = os.getenv("TEMPLATE_DOC_PATH")
 

@@ -1,11 +1,9 @@
 from __future__ import annotations
 
-import json
 import logging
 import time
 import uuid
 from collections import deque
-from datetime import datetime, timezone
 import threading
 
 from fastapi import FastAPI, Request
@@ -19,40 +17,7 @@ _rate_limit_lock = threading.Lock()
 _rate_limit_store: dict[str, deque[float]] = {}
 
 
-class JsonFormatter(logging.Formatter):
-    """Render logs as JSON so security/ops tooling can parse them reliably."""
-
-    def format(self, record: logging.LogRecord) -> str:
-        """Convert a LogRecord into a structured JSON log line."""
-        payload = {
-            "ts": datetime.now(timezone.utc).isoformat(),
-            "level": record.levelname,
-            "logger": record.name,
-            "message": record.getMessage(),
-        }
-
-        for field in (
-            "request_id",
-            "method",
-            "path",
-            "status_code",
-            "duration_ms",
-            "client_ip",
-            "event",
-            "detail",
-        ):
-            if hasattr(record, field):
-                payload[field] = getattr(record, field)
-
-        return json.dumps(payload)
-
-
 logger = logging.getLogger("md_convert")
-if not logger.handlers:
-    handler = logging.StreamHandler()
-    handler.setFormatter(JsonFormatter())
-    logger.addHandler(handler)
-logger.setLevel(logging.INFO)
 
 
 def get_client_ip(request: Request) -> str:
