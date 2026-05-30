@@ -21,7 +21,16 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 
    docker run --rm -p 8000:8000 md-convert
 
-3. Open browser:
+3. Production-style hardened run:
+
+   docker run --rm -p 8000:8000 \
+     --read-only \
+     --tmpfs /app/tmp:rw,noexec,nosuid,size=256m \
+     --cap-drop ALL \
+     --security-opt no-new-privileges \
+     md-convert
+
+4. Open browser:
 
    http://localhost:8000
 
@@ -49,7 +58,9 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - Per-file upload limit: 20 MB.
 - Total upload limit per request: 100 MB.
 - Extracted ZIP content limit per request: 200 MB.
+- ZIP controls: max 2000 entries, max depth 12, symlinks blocked, high compression ratio blocked.
 - PDF conversion calls pandoc with --pdf-engine tectonic.
+- Security middleware: rate limiting, request IDs, and security headers are enabled by default.
 
 ## Run tests
 

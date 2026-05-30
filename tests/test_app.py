@@ -24,6 +24,11 @@ def _fake_pandoc_success(command: list[str], cwd: Path | str, **_: object) -> su
     return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
 
 
+@pytest.fixture(autouse=True)
+def clear_rate_limit_state() -> None:
+    main_module._rate_limit_store.clear()
+
+
 def test_sanitize_relative_path_strips_parent_traversal() -> None:
     sanitized = sanitize_relative_path("../pics/../images/plot.png")
     assert sanitized == Path("images/plot.png")
@@ -61,6 +66,21 @@ def test_extract_zip_to_dir_sanitizes_member_paths(tmp_path: Path) -> None:
     assert (destination / "docs/main.md").exists()
 
 
+def test_extract_zip_to_dir_rejects_suspicious_compression_ratio(tmp_path: Path) -> None:
+    archive = tmp_path / "bomb.zip"
+    destination = tmp_path / "out"
+    destination.mkdir()
+
+    with zipfile.ZipFile(archive, "w", compression=zipfile.ZIP_DEFLATED) as zf:
+        zf.writestr("huge.txt", b"A" * (1024 * 1024))
+
+    with pytest.raises(HTTPException) as exc:
+        extract_zip_to_dir(archive, destination, max_total_bytes=10 * 1024 * 1024)
+
+    assert exc.value.status_code == 413
+    assert "compression ratio" in str(exc.value.detail)
+
+
 def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(main_module.subprocess, "run", _fake_pandoc_success)
     client = TestClient(app)
@@ -76,6 +96,9 @@ def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.
         "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
     )
     assert response.content == b"converted"
+    assert response.headers["x-content-type-options"] == "nosniff"
+    assert response.headers["x-frame-options"] == "DENY"
+    assert response.headers["x-request-id"]
 
 
 def test_convert_endpoint_accepts_zip_only(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -141,3 +164,24 @@ def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.Monke
     assert response.status_code == 200
     assert response.content == b"converted"
     assert observed["asset_exists"] is True
+
+
+def test_convert_endpoint_rate_limits_requests(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(main_module.subprocess, "run", _fake_pandoc_success)
+    monkeypatch.setattr(main_module, "RATE_LIMIT_MAX_REQUESTS", 1)
+    client = TestClient(app)
+
+    first = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("main.md", b"# first", "text/markdown")},
+    )
+    second = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("main.md", b"# second", "text/markdown")},
+    )
+
+    assert first.status_code == 200
+    assert second.status_code == 429
+    assert second.headers["retry-after"]
