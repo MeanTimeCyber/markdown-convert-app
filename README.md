@@ -1,6 +1,8 @@
 # Overview
 
-Simple web app for converting markdown to DOCX or PDF using pandoc. Built using GitHub Copilot. As sensibly as possible, but only suitable for running locally or on a private network.
+Simple containerised web app for converting markdown to DOCX or PDF using pandoc.
+
+Built using GitHub Copilot. As sensibly as possible, but still only suitable for running locally or on a private network.
 
 ## What this includes
 
