@@ -9,8 +9,7 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - Upload support for markdown and optional asset files (images, etc.)
 - Optional ZIP package upload containing markdown + assets
 - Relative path preservation for uploaded asset folders
-- Docker setup with pandoc and tectonic for PDF output
-- Docker setup with pandoc and xelatex for PDF output
+- Docker setup with pandoc and full TeX Live for broad PDF compatibility
 
 ## Run with Docker
 
@@ -62,6 +61,8 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - ZIP controls: max 2000 entries, max depth 12, symlinks blocked, high compression ratio blocked.
 - PDF conversion calls pandoc with --pdf-engine xelatex by default.
 - You can override the PDF engine with the PDF_ENGINE environment variable.
+- Docker image includes texlive-full to avoid missing LaTeX/font packages for PDF.
+- texlive-full significantly increases image build time and image size.
 - Security middleware: rate limiting, request IDs, and security headers are enabled by default.
 
 ## Run tests

@@ -6,7 +6,7 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 WORKDIR /app
 
 RUN apt-get update \
-    && apt-get install -y --no-install-recommends pandoc texlive-xetex lmodern \
+    && apt-get install -y --no-install-recommends pandoc texlive-full \
     && groupadd --gid 10001 appuser \
     && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser \
     && mkdir -p /app/tmp \
