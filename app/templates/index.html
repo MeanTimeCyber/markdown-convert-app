@@ -116,6 +116,17 @@
       color: #406047;
     }
 
+    .file-summary {
+      margin-top: 10px;
+      border: 1px dashed #b8cfbe;
+      border-radius: 10px;
+      background: #f7fbf8;
+      padding: 10px;
+      font-size: 0.9rem;
+      color: #294131;
+      white-space: pre-line;
+    }
+
     .status {
       margin-top: 12px;
       font-weight: 600;
@@ -144,18 +155,21 @@
         <label for="main_file">Main markdown file</label>
         <input id="main_file" name="main_file" type="file" accept=".md,.markdown,.mdown,text/markdown" />
         <div class="hint">You can provide this directly or inside a ZIP package below.</div>
+        <div class="file-summary" id="mainSummary">No markdown file selected.</div>
       </div>
 
       <div class="field">
         <label for="project_zip">ZIP package (optional)</label>
         <input id="project_zip" name="project_zip" type="file" accept=".zip,application/zip" />
         <div class="hint">Upload one ZIP containing markdown + assets to keep folder paths intact.</div>
+        <div class="file-summary" id="zipSummary">No ZIP package selected.</div>
       </div>
 
       <div class="field">
         <label for="assets">Referenced assets (optional)</label>
         <input id="assets" name="assets" type="file" multiple webkitdirectory directory />
         <div class="hint">Tip: choose the project folder containing your images to preserve relative paths.</div>
+        <div class="file-summary" id="assetsSummary">No assets selected.</div>
       </div>
 
       <div class="field">
@@ -178,6 +192,61 @@
     const form = document.getElementById("convertForm");
     const status = document.getElementById("status");
     const resetButton = document.getElementById("resetButton");
+    const mainFileInput = document.getElementById("main_file");
+    const projectZipInput = document.getElementById("project_zip");
+    const assetsInput = document.getElementById("assets");
+    const mainSummary = document.getElementById("mainSummary");
+    const zipSummary = document.getElementById("zipSummary");
+    const assetsSummary = document.getElementById("assetsSummary");
+
+    function formatSize(bytes) {
+      if (!bytes) return "0 B";
+      const units = ["B", "KB", "MB", "GB"];
+      let size = bytes;
+      let index = 0;
+      while (size >= 1024 && index < units.length - 1) {
+        size /= 1024;
+        index += 1;
+      }
+      return `${size.toFixed(size >= 10 || index === 0 ? 0 : 1)} ${units[index]}`;
+    }
+
+    function updateSingleFileSummary(input, target, emptyMessage, label) {
+      const file = input.files && input.files[0];
+      if (!file) {
+        target.textContent = emptyMessage;
+        return;
+      }
+
+      target.textContent = `${label}: ${file.name}\nSize: ${formatSize(file.size)}`;
+    }
+
+    function updateAssetsSummary() {
+      const files = Array.from(assetsInput.files || []);
+      if (!files.length) {
+        assetsSummary.textContent = "No assets selected.";
+        return;
+      }
+
+      const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
+      const preview = files.slice(0, 5).map((file) => `- ${file.webkitRelativePath || file.name}`);
+      if (files.length > 5) {
+        preview.push(`- ...and ${files.length - 5} more`);
+      }
+
+      assetsSummary.textContent = [
+        `Files: ${files.length}`,
+        `Total size: ${formatSize(totalBytes)}`,
+        "Sample:",
+        ...preview,
+      ].join("\n");
+    }
+
+    function refreshSummaries() {
+      updateSingleFileSummary(mainFileInput, mainSummary, "No markdown file selected.", "File");
+      updateSingleFileSummary(projectZipInput, zipSummary, "No ZIP package selected.", "ZIP");
+      updateAssetsSummary();
+    }
 
     function parseFilename(contentDisposition) {
       if (!contentDisposition) return null;
@@ -233,7 +302,14 @@
       form.reset();
       status.classList.remove("error");
       status.textContent = "Form cleared.";
+      refreshSummaries();
     });
+
+    mainFileInput.addEventListener("change", refreshSummaries);
+    projectZipInput.addEventListener("change", refreshSummaries);
+    assetsInput.addEventListener("change", refreshSummaries);
+
+    refreshSummaries();
   </script>
 </body>
 </html>
