@@ -101,6 +101,16 @@
       background: #fcfefc;
     }
 
+    .field.disabled {
+      opacity: 0.55;
+      background: #f3f6f3;
+    }
+
+    .field.disabled label,
+    .field.disabled .hint {
+      color: #6f8474;
+    }
+
     label {
       display: block;
       font-weight: 700;
@@ -212,9 +222,10 @@
       </div>
 
       {% if template_available %}
-      <div class="field" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: #fcfefc;">
+      <div id="templateStylesSection" class="field" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: #fcfefc;">
         <input id="use_template" name="use_template" type="checkbox" checked style="width: auto; cursor: pointer;" />
         <label for="use_template" style="margin: 0; font-weight: 600;">Use template styles</label>
+        <span id="templateStylesHint" class="hint" style="margin: 0 0 0 auto;">DOCX only</span>
       </div>
       {% endif %}
 
@@ -248,11 +259,14 @@
     const status = document.getElementById("status");
     const resetButton = document.getElementById("resetButton");
     const mainFileInput = document.getElementById("main_file");
+    const outputFormatSelect = document.getElementById("output_format");
     const projectZipInput = document.getElementById("project_zip");
     const assetsInput = document.getElementById("assets");
     const mainSummary = document.getElementById("mainSummary");
     const zipSummary = document.getElementById("zipSummary");
     const assetsSummary = document.getElementById("assetsSummary");
+    const templateStylesSection = document.getElementById("templateStylesSection");
+    const useTemplateInput = document.getElementById("use_template");
 
     function formatSize(bytes) {
       if (!bytes) return "0 B";
@@ -301,6 +315,17 @@
       updateSingleFileSummary(mainFileInput, mainSummary, "No markdown file selected.", "File");
       updateSingleFileSummary(projectZipInput, zipSummary, "No ZIP package selected.", "ZIP");
       updateAssetsSummary();
+    }
+
+    function syncTemplateStylesState() {
+      if (!templateStylesSection || !useTemplateInput) {
+        return;
+      }
+
+      const isDocx = outputFormatSelect.value === "docx";
+      useTemplateInput.disabled = !isDocx;
+      templateStylesSection.classList.toggle("disabled", !isDocx);
+      useTemplateInput.style.cursor = isDocx ? "pointer" : "not-allowed";
     }
 
     function parseFilename(contentDisposition) {
@@ -361,10 +386,12 @@
     });
 
     mainFileInput.addEventListener("change", refreshSummaries);
+    outputFormatSelect.addEventListener("change", syncTemplateStylesState);
     projectZipInput.addEventListener("change", refreshSummaries);
     assetsInput.addEventListener("change", refreshSummaries);
 
     refreshSummaries();
+    syncTemplateStylesState();
   </script>
 </body>
 </html>
