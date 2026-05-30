@@ -1,17 +1,5 @@
-FROM python:3.12-slim
-
-ENV PYTHONDONTWRITEBYTECODE=1 \
-    PYTHONUNBUFFERED=1
-
-WORKDIR /app
-
-RUN apt-get update \
-    && apt-get install -y --no-install-recommends pandoc texlive-full \
-    && groupadd --gid 10001 appuser \
-    && useradd --uid 10001 --gid 10001 --create-home --shell /usr/sbin/nologin appuser \
-    && mkdir -p /app/tmp \
-    && chown -R appuser:appuser /app \
-    && rm -rf /var/lib/apt/lists/*
+ARG BASE_IMAGE=md-convert-base:latest
+FROM ${BASE_IMAGE}
 
 COPY requirements.txt ./
 RUN pip install --no-cache-dir -r requirements.txt
