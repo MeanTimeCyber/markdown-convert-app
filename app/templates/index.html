@@ -205,10 +205,18 @@
       <div class="section-head">Output</div>
       <div class="field">
         <label for="output_format">Output format</label>
+        {% if pdf_enabled %}
         <select id="output_format" name="output_format" required>
           <option value="docx">DOCX</option>
           <option value="pdf">PDF</option>
         </select>
+        {% else %}
+        <select id="output_format" disabled aria-disabled="true">
+          <option value="docx" selected>DOCX</option>
+        </select>
+        <input type="hidden" name="output_format" value="docx" />
+        <div class="hint">PDF output is disabled in this build.</div>
+        {% endif %}
       </div>
 
       <hr class="section-separator" />

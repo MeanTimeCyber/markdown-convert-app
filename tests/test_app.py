@@ -127,6 +127,33 @@ def test_help_page_is_available() -> None:
     assert "Markdown Writing Syntax" in response.text
 
 
+def test_index_hides_pdf_option_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config, "ENABLE_PDF", False)
+    client = TestClient(app)
+
+    response = client.get("/")
+
+    assert response.status_code == 200
+    assert '<option value="pdf">PDF</option>' not in response.text
+    assert 'id="output_format" disabled' in response.text
+    assert 'name="output_format" value="docx"' in response.text
+
+
+def test_convert_rejects_pdf_when_disabled(monkeypatch: pytest.MonkeyPatch) -> None:
+    monkeypatch.setattr(config, "ENABLE_PDF", False)
+    monkeypatch.setattr(config, "ALLOWED_OUTPUTS", {"docx"})
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "pdf"},
+        files={"main_file": ("main.md", b"# title", "text/markdown")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Output format must be docx."
+
+
 def test_convert_endpoint_sanitizes_download_filename(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     client = TestClient(app)

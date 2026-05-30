@@ -3,8 +3,10 @@ from __future__ import annotations
 import os
 from pathlib import Path
 
+# Whether PDF conversion support is enabled.
+ENABLE_PDF = os.getenv("ENABLE_PDF", "true").lower() in {"1", "true", "yes", "on"}
 # Allowed output formats exposed by the API.
-ALLOWED_OUTPUTS = {"docx", "pdf"}
+ALLOWED_OUTPUTS = {"docx", "pdf"} if ENABLE_PDF else {"docx"}
 # Allowed extensions for the user-selected primary markdown document.
 ALLOWED_MD_EXTENSIONS = {".md", ".markdown", ".mdown"}
 # Maximum size for any single uploaded file.

@@ -1,8 +1,10 @@
 # Overview
 
-Simple containerised web app for converting markdown to DOCX or PDF using pandoc.
+Simple, containerised web app for converting markdown to DOCX or PDF using pandoc.
 
 Built using GitHub Copilot. As sensibly as possible, but still only suitable for running locally or on a private network.
+
+Currently there's no styling in a generate PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
 
 ## What this includes
 
@@ -47,13 +49,42 @@ Built using GitHub Copilot. As sensibly as possible, but still only suitable for
 
    http://localhost:8000
 
+## Build Without PDF Support
+
+For a smaller/faster image, build without PDF generation dependencies:
+
+1. Build no-PDF image pair:
+
+   make build-no-pdf
+
+2. Run no-PDF app:
+
+   make run-no-pdf
+
+   Direct Docker run example:
+
+   docker run --rm -p 8000:8000 md-convert-no-pdf
+
+   Hardened no-PDF run example:
+
+   docker run --rm -p 8000:8000 \
+     --read-only \
+     --tmpfs /app/tmp:rw,noexec,nosuid,size=256m \
+     --cap-drop ALL \
+     --security-opt no-new-privileges \
+     md-convert-no-pdf
+
+In this mode, the app only offers DOCX output and hides PDF in the UI.
+
 ## Makefile Shortcuts
 
 - Build TeX base image: make build-base
 - Build app image: make build-app
 - Build both images: make build
+- Build no-PDF image: make build-no-pdf
 - Run container: make run
 - Run hardened container: make run-hardened
+- Run no-PDF container: make run-no-pdf
 - Run tests: make test
 
 ## Run locally
@@ -69,9 +100,17 @@ Built using GitHub Copilot. As sensibly as possible, but still only suitable for
 
    uvicorn app.main:app --reload
 
+   No-PDF local run example:
+
+   ENABLE_PDF=false uvicorn app.main:app --reload
+
    Or with a template document:
 
    TEMPLATE_DOC_PATH=/path/to/template.docx uvicorn app.main:app --reload
+
+   No-PDF local run with template:
+
+   ENABLE_PDF=false TEMPLATE_DOC_PATH=/path/to/template.docx uvicorn app.main:app --reload
 
 4. Open:
 

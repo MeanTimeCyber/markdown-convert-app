@@ -13,7 +13,8 @@ from fastapi.responses import FileResponse, HTMLResponse
 from fastapi.templating import Jinja2Templates
 from starlette.background import BackgroundTask
 
-from app.config import ALLOWED_OUTPUTS, MAX_ARCHIVE_BYTES, MAX_FILE_BYTES, MAX_TOTAL_BYTES
+from app import config
+from app.config import MAX_ARCHIVE_BYTES, MAX_FILE_BYTES, MAX_TOTAL_BYTES
 from app.services.conversion import build_pandoc_command, run_pandoc
 from app.services.uploads import (
     ensure_md_extension,
@@ -49,7 +50,14 @@ def sanitize_download_stem(stem: str) -> str:
 async def index(request: Request) -> HTMLResponse:
     """Render the upload page."""
     template_available = request.app.state.template_file is not None
-    return templates.TemplateResponse(request, "index.html", {"template_available": template_available})
+    return templates.TemplateResponse(
+        request,
+        "index.html",
+        {
+            "template_available": template_available,
+            "pdf_enabled": config.ENABLE_PDF,
+        },
+    )
 
 
 @router.get("/help", response_class=HTMLResponse)
@@ -73,8 +81,9 @@ async def convert(
     apply the template to pandoc via --reference-doc.
     """
     output_format = output_format.lower().strip()
-    if output_format not in ALLOWED_OUTPUTS:
-        raise HTTPException(status_code=400, detail="Output format must be docx or pdf.")
+    if output_format not in config.ALLOWED_OUTPUTS:
+        allowed = " or ".join(sorted(config.ALLOWED_OUTPUTS))
+        raise HTTPException(status_code=400, detail=f"Output format must be {allowed}.")
 
     # Browsers may submit empty file parts for unselected file inputs.
     # Normalize those to None so ZIP-only uploads don't trip markdown validation.
