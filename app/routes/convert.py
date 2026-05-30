@@ -21,6 +21,7 @@ from app.services.uploads import (
     pick_main_markdown,
     sanitize_relative_path,
     save_upload,
+    validate_markdown_image_references,
 )
 
 router = APIRouter()
@@ -145,6 +146,8 @@ async def convert(
 
         output_name = f"{sanitize_download_stem(main_path.stem)}.{output_format}"
         output_path = temp_dir / output_name
+
+        validate_markdown_image_references(main_path, temp_dir)
 
         command = build_pandoc_command(main_rel, output_name, output_format, template_path)
         result = run_pandoc(command, temp_dir)

@@ -1,8 +1,10 @@
 from __future__ import annotations
 
+import re
 import shutil
 import zipfile
 from pathlib import Path, PurePosixPath
+from urllib.parse import unquote
 
 from fastapi import HTTPException, UploadFile
 
@@ -13,6 +15,9 @@ from app.config import (
     MAX_ZIP_DEPTH,
     MAX_ZIP_ENTRIES,
 )
+
+MARKDOWN_IMAGE_RE = re.compile(r"!\[[^\]]*\]\(([^)]+)\)")
+HTML_IMAGE_RE = re.compile(r"<img[^>]+src=[\"']([^\"']+)[\"']", re.IGNORECASE)
 
 
 def sanitize_relative_path(raw_name: str) -> Path:
@@ -137,3 +142,57 @@ def extract_zip_to_dir(zip_path: Path, destination: Path, max_total_bytes: int) 
             target.parent.mkdir(parents=True, exist_ok=True)
             with archive.open(info, "r") as source, target.open("wb") as out:
                 shutil.copyfileobj(source, out)
+
+
+def _is_external_reference(ref: str) -> bool:
+    lower = ref.lower()
+    return lower.startswith(("http://", "https://", "data:", "mailto:"))
+
+
+def _normalize_markdown_image_ref(raw_ref: str) -> str:
+    ref = raw_ref.strip()
+    if ref.startswith("<") and ref.endswith(">"):
+        ref = ref[1:-1].strip()
+    if " " in ref:
+        ref = ref.split(" ", 1)[0]
+    ref = ref.split("#", 1)[0].split("?", 1)[0]
+    return unquote(ref)
+
+
+def validate_markdown_image_references(main_file_path: Path, temp_dir: Path) -> None:
+    """Ensure local image references in markdown resolve to existing uploaded files."""
+    content = main_file_path.read_text(encoding="utf-8", errors="replace")
+    refs = [
+        _normalize_markdown_image_ref(match.group(1))
+        for match in MARKDOWN_IMAGE_RE.finditer(content)
+    ]
+    refs.extend(match.group(1).strip() for match in HTML_IMAGE_RE.finditer(content))
+
+    if not refs:
+        return
+
+    temp_root = temp_dir.resolve()
+    missing: list[str] = []
+    for ref in refs:
+        if not ref or _is_external_reference(ref):
+            continue
+
+        rel_ref = ref.replace("\\", "/")
+        path_ref = Path(rel_ref)
+        if path_ref.is_absolute():
+            missing.append(ref)
+            continue
+
+        resolved = (main_file_path.parent / path_ref).resolve()
+        if temp_root not in (resolved, *resolved.parents):
+            missing.append(ref)
+            continue
+        if not resolved.is_file():
+            missing.append(ref)
+
+    if missing:
+        preview = ", ".join(sorted(set(missing))[:5])
+        raise HTTPException(
+            status_code=400,
+            detail=f"Missing referenced image files: {preview}",
+        )

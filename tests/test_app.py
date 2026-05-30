@@ -250,6 +250,23 @@ def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.Monke
     assert observed["asset_exists"] is True
 
 
+def test_convert_endpoint_rejects_missing_referenced_image(monkeypatch: pytest.MonkeyPatch) -> None:
+    def should_not_run_pandoc(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
+        raise AssertionError("pandoc should not run when referenced images are missing")
+
+    monkeypatch.setattr(convert_routes, "run_pandoc", should_not_run_pandoc)
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files={"main_file": ("main.md", b"![plot](images/plot.png)", "text/markdown")},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"].startswith("Missing referenced image files:")
+
+
 def test_convert_endpoint_rate_limits_requests(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     monkeypatch.setattr(config, "RATE_LIMIT_MAX_REQUESTS", 1)
