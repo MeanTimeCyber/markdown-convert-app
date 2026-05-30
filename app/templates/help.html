@@ -126,25 +126,39 @@
 
     <h2>Markdown Writing Syntax</h2>
     <p>Common syntax patterns:</p>
-    <div class="example"># Heading 1
-## Heading 2
+    <pre class="example"><code>
+  # Heading 1
+  ## Heading 2
+  ### Heading 3
 
-**bold text**
-*italic text*
+  **bold text**
+  *italic text*
 
-- bullet item
-- another bullet
+  - bullet item
+  - another bullet
 
-1. numbered item
-2. numbered item
+  1. numbered item
+  2. numbered item
 
-[Link text](https://example.com)
+  [Link text](https://example.com)
 
-![Image alt text](images/plot.png)
+  ![Image alt text](images/plot.png)
 
-```python
-print("code block")
-```</div>
+  ```python
+  print("code block")
+  ```
+
+  &gt; blockquote of text
+  &gt; second line of text
+  &gt;
+  &gt; &lt;cite&gt;Quote citation&lt;/cite&gt;
+  </code></pre>
+
+    <p>For more complex formatting, the converter supports standard markdown syntax and pandoc extensions. See the <a href="https://pandoc.org/MANUAL.html#pandocs-markdown" target="_blank">pandoc markdown documentation</a> for details.</p>
+
+    <h2>Template Styles</h2>
+    <p>If you have template styles configured in the app settings, you can apply them to your DOCX output by leaving the "Apply Template Styles" checkbox checked. This will use the styles from your configured Word template to format headings, paragraphs, lists, and other elements in the generated document.</p>
+    <p>Make sure your markdown uses standard heading syntax (e.g. <code>#</code> for Heading 1, <code>##</code> for Heading 2) to ensure the styles are applied correctly. The converter maps markdown elements to Word styles based on the template you have set up.</p>
 
     <h2>Image References</h2>
     <ul>
