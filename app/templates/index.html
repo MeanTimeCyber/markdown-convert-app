@@ -51,6 +51,29 @@
       color: var(--muted);
     }
 
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 6px;
+    }
+
+    .help-link {
+      color: #1f5f35;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid #b6d2be;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: #eef7f0;
+      white-space: nowrap;
+    }
+
+    .help-link:hover {
+      background: #e3f1e7;
+    }
+
     form {
       display: grid;
       gap: 14px;
@@ -162,8 +185,11 @@
 </head>
 <body>
   <main class="card">
-    <h1>Markdown Conversion Tool</h1>
-    <p>Upload one markdown file and any referenced assets. Folder upload preserves image paths for links such as images/diagram.png.</p>
+    <div class="top-row">
+      <h1>Markdown Conversion Tool</h1>
+      <a class="help-link" href="/help">Help</a>
+    </div>
+    <p>Upload one markdown file and any referenced assets, or provide a ZIP package with the full project.</p>
 
     <form id="convertForm" action="/convert" method="post" enctype="multipart/form-data">
       <div class="section-head">Output</div>
@@ -201,8 +227,8 @@
 
       <div class="field">
         <label for="assets">Referenced assets (optional)</label>
-        <input id="assets" name="assets" type="file" multiple webkitdirectory directory />
-        <div class="hint">Tip: choose the project folder containing your images to preserve relative paths.</div>
+        <input id="assets" name="assets" type="file" multiple />
+        <div class="hint">Select one or more referenced files (for example images used in your markdown).</div>
         <div class="file-summary" id="assetsSummary">No assets selected.</div>
       </div>
 
@@ -258,7 +284,7 @@
       }
 
       const totalBytes = files.reduce((acc, file) => acc + file.size, 0);
-      const preview = files.slice(0, 5).map((file) => `- ${file.webkitRelativePath || file.name}`);
+      const preview = files.slice(0, 5).map((file) => `- ${file.name}`);
       if (files.length > 5) {
         preview.push(`- ...and ${files.length - 5} more`);
       }

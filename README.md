@@ -8,7 +8,7 @@ Simple web app for converting markdown to DOCX or PDF using pandoc. Built using 
 - Single-page upload form
 - Upload support for markdown and optional asset files (images, etc.)
 - Optional ZIP package upload containing markdown + assets
-- Relative path preservation for uploaded asset folders
+- Multi-file upload for referenced assets
 - Docker setup with pandoc and full TeX Live for broad PDF compatibility
 
 ## Run with Docker

@@ -1,0 +1,157 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Markdown Convert Help</title>
+  <style>
+    :root {
+      --bg: #f4f8f2;
+      --panel: #ffffff;
+      --text: #1d2a1f;
+      --muted: #4e6552;
+      --border: #b9d7c1;
+      --accent: #0f7b3f;
+    }
+
+    * { box-sizing: border-box; }
+
+    body {
+      margin: 0;
+      min-height: 100vh;
+      font-family: "Source Sans 3", "Segoe UI", sans-serif;
+      color: var(--text);
+      background:
+        radial-gradient(circle at 88% 12%, #d9efdc 0, transparent 35%),
+        radial-gradient(circle at 10% 86%, #d4e8ff 0, transparent 35%),
+        var(--bg);
+      padding: 20px;
+      display: grid;
+      place-items: center;
+    }
+
+    .card {
+      width: min(900px, 100%);
+      background: var(--panel);
+      border: 2px solid var(--border);
+      border-radius: 18px;
+      box-shadow: 0 12px 30px rgba(21, 45, 26, 0.12);
+      padding: 22px;
+    }
+
+    .top-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      gap: 12px;
+      margin-bottom: 12px;
+    }
+
+    h1 {
+      margin: 0;
+      font-size: clamp(1.4rem, 2vw, 2rem);
+    }
+
+    h2 {
+      margin: 20px 0 8px;
+      font-size: 1.05rem;
+      color: #284c32;
+    }
+
+    p {
+      margin: 0 0 10px;
+      color: var(--muted);
+    }
+
+    ul {
+      margin: 0;
+      padding-left: 18px;
+    }
+
+    li {
+      margin-bottom: 6px;
+    }
+
+    .nav-link {
+      color: #1f5f35;
+      font-weight: 700;
+      text-decoration: none;
+      border: 1px solid #b6d2be;
+      border-radius: 999px;
+      padding: 6px 12px;
+      background: #eef7f0;
+      white-space: nowrap;
+    }
+
+    .nav-link:hover {
+      background: #e3f1e7;
+    }
+
+    .example {
+      margin-top: 8px;
+      border: 1px dashed #b8cfbe;
+      border-radius: 10px;
+      background: #f7fbf8;
+      padding: 10px;
+      font-family: ui-monospace, SFMono-Regular, Menlo, Consolas, "Liberation Mono", monospace;
+      white-space: pre-wrap;
+      font-size: 0.92rem;
+    }
+  </style>
+</head>
+<body>
+  <main class="card">
+    <div class="top-row">
+      <h1>Help</h1>
+      <a class="nav-link" href="/">Back to Converter</a>
+    </div>
+
+    <p>Quick guide for using the Markdown Conversion Tool.</p>
+
+    <h2>How To Use The App</h2>
+    <ul>
+      <li>Select output format: DOCX or PDF.</li>
+      <li>Upload a main markdown file, or upload a ZIP package containing your markdown project.</li>
+      <li>Optionally upload referenced files (images, etc.) as multiple files.</li>
+      <li>If template styles are enabled, leave the checkbox checked to apply the configured Word template.</li>
+      <li>Click Convert and Download.</li>
+    </ul>
+
+    <h2>Input Options</h2>
+    <ul>
+      <li>Main markdown file: quick single-document workflow.</li>
+      <li>ZIP package: best for projects with nested folders and multiple assets.</li>
+      <li>Referenced files: for non-ZIP workflows, upload any local files referenced by your markdown.</li>
+    </ul>
+
+    <h2>Markdown Writing Syntax</h2>
+    <p>Common syntax patterns:</p>
+    <div class="example"># Heading 1
+## Heading 2
+
+**bold text**
+*italic text*
+
+- bullet item
+- another bullet
+
+1. numbered item
+2. numbered item
+
+[Link text](https://example.com)
+
+![Image alt text](images/plot.png)
+
+```python
+print("code block")
+```</div>
+
+    <h2>Image References</h2>
+    <ul>
+      <li>Use relative paths like <code>images/plot.png</code> in your markdown.</li>
+      <li>The converter checks local image references before running pandoc.</li>
+      <li>If a referenced file is missing, upload it or include it in your ZIP package.</li>
+    </ul>
+  </main>
+</body>
+</html>

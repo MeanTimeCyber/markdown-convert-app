@@ -49,7 +49,13 @@ def sanitize_download_stem(stem: str) -> str:
 async def index(request: Request) -> HTMLResponse:
     """Render the upload page."""
     template_available = request.app.state.template_file is not None
-    return templates.TemplateResponse("index.html", {"request": request, "template_available": template_available})
+    return templates.TemplateResponse(request, "index.html", {"template_available": template_available})
+
+
+@router.get("/help", response_class=HTMLResponse)
+async def help_page(request: Request) -> HTMLResponse:
+    """Render a quick usage and markdown help page."""
+    return templates.TemplateResponse(request, "help.html", {})
 
 
 @router.post("/convert")

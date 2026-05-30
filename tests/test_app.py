@@ -118,6 +118,15 @@ def test_convert_endpoint_returns_docx_with_markdown_upload(monkeypatch: pytest.
     assert response.headers["x-request-id"]
 
 
+def test_help_page_is_available() -> None:
+    client = TestClient(app)
+    response = client.get("/help")
+
+    assert response.status_code == 200
+    assert "Help" in response.text
+    assert "Markdown Writing Syntax" in response.text
+
+
 def test_convert_endpoint_sanitizes_download_filename(monkeypatch: pytest.MonkeyPatch) -> None:
     monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
     client = TestClient(app)
