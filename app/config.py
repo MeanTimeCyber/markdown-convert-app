@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 import os
+from pathlib import Path
 
 # Allowed output formats exposed by the API.
 ALLOWED_OUTPUTS = {"docx", "pdf"}
@@ -26,3 +27,25 @@ RATE_LIMIT_MAX_REQUESTS = 30
 REQUEST_TIMEOUT_SECONDS = 120
 # Default LaTeX engine used by pandoc for PDF output.
 PDF_ENGINE = os.getenv("PDF_ENGINE", "xelatex")
+# Optional template .docx file path for DOCX output styling.
+TEMPLATE_DOC_PATH = os.getenv("TEMPLATE_DOC_PATH")
+
+
+def get_template_file() -> Path | None:
+    """Load and validate the template file if configured.
+    
+    Returns the Path if TEMPLATE_DOC_PATH is set and file exists, None otherwise.
+    Raises FileNotFoundError if path is set but file does not exist.
+    """
+    if not TEMPLATE_DOC_PATH:
+        return None
+    
+    template_path = Path(TEMPLATE_DOC_PATH)
+    if not template_path.exists():
+        raise FileNotFoundError(f"Template file not found: {TEMPLATE_DOC_PATH}")
+    if not template_path.is_file():
+        raise ValueError(f"Template path is not a file: {TEMPLATE_DOC_PATH}")
+    if template_path.suffix.lower() != ".docx":
+        raise ValueError(f"Template must be .docx, got: {template_path.suffix}")
+    
+    return template_path

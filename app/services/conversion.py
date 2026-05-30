@@ -6,8 +6,11 @@ from pathlib import Path
 from app.config import PDF_ENGINE, REQUEST_TIMEOUT_SECONDS
 
 
-def build_pandoc_command(main_rel: Path, output_name: str, output_format: str) -> list[str]:
-    """Build a strict pandoc command without exposing user-controlled flags."""
+def build_pandoc_command(main_rel: Path, output_name: str, output_format: str, template_path: Path | None = None) -> list[str]:
+    """Build a strict pandoc command without exposing user-controlled flags.
+    
+    If a template_path is provided and output is DOCX, add --reference-doc.
+    """
     command = [
         "pandoc",
         str(main_rel),
@@ -17,6 +20,8 @@ def build_pandoc_command(main_rel: Path, output_name: str, output_format: str) -
 
     if output_format == "pdf":
         command.extend(["--pdf-engine", PDF_ENGINE])
+    elif output_format == "docx" and template_path and template_path.exists():
+        command.extend(["--reference-doc", str(template_path)])
 
     return command
 

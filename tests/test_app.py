@@ -46,8 +46,23 @@ def test_build_pandoc_command_for_docx() -> None:
     assert command == ["pandoc", "docs/main.md", "-o", "main.docx"]
 
 
+def test_build_pandoc_command_for_docx_with_template(tmp_path: Path) -> None:
+    template_file = tmp_path / "template.docx"
+    template_file.write_text("fake docx")
+    command = build_pandoc_command(Path("main.md"), "main.docx", "docx", template_file)
+    assert command == ["pandoc", "main.md", "-o", "main.docx", "--reference-doc", str(template_file)]
+
+
 def test_build_pandoc_command_for_pdf_includes_engine() -> None:
     command = build_pandoc_command(Path("main.md"), "main.pdf", "pdf")
+    assert command == ["pandoc", "main.md", "-o", "main.pdf", "--pdf-engine", "xelatex"]
+
+
+def test_build_pandoc_command_for_pdf_ignores_template(tmp_path: Path) -> None:
+    template_file = tmp_path / "template.docx"
+    template_file.write_text("fake docx")
+    command = build_pandoc_command(Path("main.md"), "main.pdf", "pdf", template_file)
+    # Template should be ignored for PDF output
     assert command == ["pandoc", "main.md", "-o", "main.pdf", "--pdf-engine", "xelatex"]
 
 
@@ -124,6 +139,32 @@ def test_convert_endpoint_accepts_zip_only(monkeypatch: pytest.MonkeyPatch) -> N
     assert response.content == b"converted"
 
 
+def test_convert_endpoint_accepts_zip_only_with_placeholder_main_part(monkeypatch: pytest.MonkeyPatch) -> None:
+    """Some clients send an upload.bin placeholder for empty file inputs."""
+    monkeypatch.setattr(convert_routes, "run_pandoc", _fake_run_pandoc)
+    client = TestClient(app)
+
+    archive_bytes = io.BytesIO()
+    with zipfile.ZipFile(archive_bytes, "w") as zf:
+        zf.writestr("docs/main.md", b"# hello")
+    archive_bytes.seek(0)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+        files=[
+            ("main_file", ("upload.bin", b"", "application/octet-stream")),
+            ("project_zip", ("project.zip", archive_bytes.getvalue(), "application/zip")),
+        ],
+    )
+
+    assert response.status_code == 200
+    assert response.headers["content-type"].startswith(
+        "application/vnd.openxmlformats-officedocument.wordprocessingml.document"
+    )
+    assert response.content == b"converted"
+
+
 def test_convert_endpoint_returns_error_when_pandoc_fails(monkeypatch: pytest.MonkeyPatch) -> None:
     def fake_fail(command: list[str], cwd: Path | str) -> subprocess.CompletedProcess[str]:
         return subprocess.CompletedProcess(args=command, returncode=2, stdout="", stderr="boom")
@@ -139,6 +180,18 @@ def test_convert_endpoint_returns_error_when_pandoc_fails(monkeypatch: pytest.Mo
 
     assert response.status_code == 400
     assert response.json()["detail"] == "boom"
+
+
+def test_convert_endpoint_requires_markdown_source() -> None:
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx"},
+    )
+
+    assert response.status_code == 400
+    assert response.json()["detail"] == "Provide a markdown file directly, or provide a ZIP containing one."
 
 
 def test_convert_endpoint_accepts_markdown_with_assets(monkeypatch: pytest.MonkeyPatch) -> None:
@@ -187,3 +240,64 @@ def test_convert_endpoint_rate_limits_requests(monkeypatch: pytest.MonkeyPatch) 
     assert first.status_code == 200
     assert second.status_code == 429
     assert second.headers["retry-after"]
+
+
+def test_convert_endpoint_uses_configured_template_when_enabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Test that pre-configured template is used when use_template checkbox is enabled."""
+    observed: dict[str, object] = {}
+    template_file = tmp_path / "template.docx"
+    template_file.write_text("fake template")
+
+    def fake_run_with_template(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        observed["command"] = command
+        cwd_path = Path(cwd)
+        output_name = command[command.index("-o") + 1]
+        (cwd_path / output_name).write_bytes(b"converted")
+        return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(convert_routes, "run_pandoc", fake_run_with_template)
+    # Set up app to have a pre-configured template
+    app.state.template_file = template_file
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx", "use_template": "on"},
+        files=[("main_file", ("main.md", b"# title", "text/markdown"))],
+    )
+
+    assert response.status_code == 200
+    assert "--reference-doc" in observed["command"]
+    assert str(template_file) in observed["command"]
+    # Cleanup
+    app.state.template_file = None
+
+
+def test_convert_endpoint_skips_template_when_disabled(monkeypatch: pytest.MonkeyPatch, tmp_path: Path) -> None:
+    """Test that template is not used when use_template checkbox is disabled."""
+    observed: dict[str, object] = {}
+    template_file = tmp_path / "template.docx"
+    template_file.write_text("fake template")
+
+    def fake_run_without_template(command: list[str], cwd: Path) -> subprocess.CompletedProcess[str]:
+        observed["command"] = command
+        cwd_path = Path(cwd)
+        output_name = command[command.index("-o") + 1]
+        (cwd_path / output_name).write_bytes(b"converted")
+        return subprocess.CompletedProcess(args=command, returncode=0, stdout="", stderr="")
+
+    monkeypatch.setattr(convert_routes, "run_pandoc", fake_run_without_template)
+    # Set up app to have a pre-configured template
+    app.state.template_file = template_file
+    client = TestClient(app)
+
+    response = client.post(
+        "/convert",
+        data={"output_format": "docx", "use_template": "off"},
+        files=[("main_file", ("main.md", b"# title", "text/markdown"))],
+    )
+
+    assert response.status_code == 200
+    assert "--reference-doc" not in observed["command"]
+    # Cleanup
+    app.state.template_file = None

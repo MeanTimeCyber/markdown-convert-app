@@ -13,15 +13,19 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 
 ## Run with Docker
 
-1. Build image:
+1. Build TeX base image (slow, done rarely):
+
+   docker build -f Dockerfile.base -t md-convert-base:latest .
+
+2. Build app image (fast, done frequently):
 
    docker build -t md-convert .
 
-2. Run container:
+3. Run container:
 
    docker run --rm -p 8000:8000 md-convert
 
-3. Production-style hardened run:
+4. Production-style hardened run:
 
    docker run --rm -p 8000:8000 \
      --read-only \
@@ -30,9 +34,25 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
      --security-opt no-new-privileges \
      md-convert
 
-4. Open browser:
+5. Run with a template document:
+
+   docker run --rm -p 8000:8000 \
+     -v /path/to/your/template.docx:/template.docx \
+     -e TEMPLATE_DOC_PATH=/template.docx \
+     md-convert
+
+6. Open browser:
 
    http://localhost:8000
+
+## Makefile Shortcuts
+
+- Build TeX base image: make build-base
+- Build app image: make build-app
+- Build both images: make build
+- Run container: make run
+- Run hardened container: make run-hardened
+- Run tests: make test
 
 ## Run locally
 
@@ -46,6 +66,10 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 3. Start server:
 
    uvicorn app.main:app --reload
+
+   Or with a template document:
+
+   TEMPLATE_DOC_PATH=/path/to/template.docx uvicorn app.main:app --reload
 
 4. Open:
 
@@ -61,9 +85,26 @@ Simple web app for converting markdown to DOCX or PDF using pandoc.
 - ZIP controls: max 2000 entries, max depth 12, symlinks blocked, high compression ratio blocked.
 - PDF conversion calls pandoc with --pdf-engine xelatex by default.
 - You can override the PDF engine with the PDF_ENGINE environment variable.
+- **Template documents (optional)**: Specify a Word document template to style DOCX output. Set the TEMPLATE_DOC_PATH environment variable to the path of a .docx template file. Users can then enable/disable template application via a checkbox in the UI. Templates are only applied to DOCX output, not PDF.
+  - To create a custom reference document: `pandoc -o custom-reference.docx --print-default-data-file reference.docx`
+  - Then edit the generated `custom-reference.docx` with your preferred styles, colors, fonts, etc.
+  - Pass it to the app via `TEMPLATE_DOC_PATH=/path/to/custom-reference.docx`
 - Docker image includes texlive-full to avoid missing LaTeX/font packages for PDF.
 - texlive-full significantly increases image build time and image size.
+- Use Dockerfile.base for rare TeX rebuilds and Dockerfile for fast app rebuilds.
+- You can override base image at build time: docker build --build-arg BASE_IMAGE=<tag> -t md-convert .
 - Security middleware: rate limiting, request IDs, and security headers are enabled by default.
+
+## Optional Build Cache
+
+Use BuildKit cache mounts/registry cache in CI for faster repeat builds.
+
+Example with buildx local cache:
+
+docker buildx build \
+   --cache-from type=local,src=.buildx-cache \
+   --cache-to type=local,dest=.buildx-cache-new,mode=max \
+   -f Dockerfile.base -t md-convert-base:latest .
 
 ## Run tests
 

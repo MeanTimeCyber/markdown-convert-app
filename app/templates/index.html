@@ -56,6 +56,21 @@
       gap: 14px;
     }
 
+    .section-head {
+      margin: 2px 0 0;
+      font-size: 0.84rem;
+      font-weight: 800;
+      letter-spacing: 0.08em;
+      text-transform: uppercase;
+      color: #2f5a3a;
+    }
+
+    .section-separator {
+      border: 0;
+      border-top: 1px solid #c6dbcf;
+      margin: 2px 0;
+    }
+
     .field {
       border: 1px solid var(--border);
       border-radius: 12px;
@@ -151,12 +166,31 @@
     <p>Upload one markdown file and any referenced assets. Folder upload preserves image paths for links such as images/diagram.png.</p>
 
     <form id="convertForm" action="/convert" method="post" enctype="multipart/form-data">
+      <div class="section-head">Output</div>
+      <div class="field">
+        <label for="output_format">Output format</label>
+        <select id="output_format" name="output_format" required>
+          <option value="docx">DOCX</option>
+          <option value="pdf">PDF</option>
+        </select>
+      </div>
+
+      <hr class="section-separator" />
+      <div class="section-head">Input Files</div>
+
       <div class="field">
         <label for="main_file">Main markdown file</label>
         <input id="main_file" name="main_file" type="file" accept=".md,.markdown,.mdown,text/markdown" />
         <div class="hint">You can provide this directly or inside a ZIP package below.</div>
         <div class="file-summary" id="mainSummary">No markdown file selected.</div>
       </div>
+
+      {% if template_available %}
+      <div class="field" style="display: flex; align-items: center; gap: 10px; padding: 10px; border: 1px solid var(--border); border-radius: 12px; background: #fcfefc;">
+        <input id="use_template" name="use_template" type="checkbox" checked style="width: auto; cursor: pointer;" />
+        <label for="use_template" style="margin: 0; font-weight: 600;">Use template styles</label>
+      </div>
+      {% endif %}
 
       <div class="field">
         <label for="project_zip">ZIP package (optional)</label>
@@ -172,13 +206,8 @@
         <div class="file-summary" id="assetsSummary">No assets selected.</div>
       </div>
 
-      <div class="field">
-        <label for="output_format">Output format</label>
-        <select id="output_format" name="output_format" required>
-          <option value="docx">DOCX</option>
-          <option value="pdf">PDF</option>
-        </select>
-      </div>
+      <hr class="section-separator" />
+      <div class="section-head">Actions and Status</div>
 
       <div class="actions">
         <button type="submit">Convert and Download</button>

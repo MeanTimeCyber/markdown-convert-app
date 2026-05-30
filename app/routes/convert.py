@@ -28,29 +28,55 @@ templates = Jinja2Templates(directory="app/templates")
 @router.get("/", response_class=HTMLResponse)
 async def index(request: Request) -> HTMLResponse:
     """Render the upload page."""
-    return templates.TemplateResponse("index.html", {"request": request})
+    template_available = request.app.state.template_file is not None
+    return templates.TemplateResponse("index.html", {"request": request, "template_available": template_available})
 
 
 @router.post("/convert")
 async def convert(
+    request: Request,
     output_format: str = Form(...),
     main_file: UploadFile | None = File(default=None),
     project_zip: UploadFile | None = File(default=None),
     assets: list[UploadFile] = File(default_factory=list),
+    use_template: str = Form(default="on"),
 ):
-    """Handle upload validation, markdown conversion, and output file response."""
+    """Handle upload validation, markdown conversion, and output file response.
+    
+    If template is configured and use_template checkbox is checked, and output is DOCX,
+    apply the template to pandoc via --reference-doc.
+    """
     output_format = output_format.lower().strip()
     if output_format not in ALLOWED_OUTPUTS:
         raise HTTPException(status_code=400, detail="Output format must be docx or pdf.")
 
+    # Browsers may submit empty file parts for unselected file inputs.
+    # Normalize those to None so ZIP-only uploads don't trip markdown validation.
+    main_filename = (main_file.filename or "").strip() if main_file else ""
+    zip_filename = (project_zip.filename or "").strip() if project_zip else ""
+
+    # Some clients send a placeholder main file called upload.bin when nothing is selected.
+    if main_filename == "upload.bin" and zip_filename:
+        main_file = None
+    if not main_file or not main_filename:
+        main_file = None
+    if not project_zip or not (project_zip.filename or "").strip():
+        project_zip = None
+
     temp_dir = Path(tempfile.mkdtemp(prefix="md-convert-"))
     total_written = 0
+    template_path: Path | None = None
+    should_use_template = use_template.lower() in {"on", "true", "1", "yes"}
+    
+    # Use pre-configured template if available and user has enabled it
+    if should_use_template and request.app.state.template_file:
+        template_path = request.app.state.template_file
 
     try:
         if not main_file and not project_zip:
             raise HTTPException(
                 status_code=400,
-                detail="Upload either a markdown file or a ZIP package.",
+                detail="Provide a markdown file directly, or provide a ZIP containing one.",
             )
 
         if project_zip:
@@ -101,7 +127,7 @@ async def convert(
         output_name = f"{main_path.stem}.{output_format}"
         output_path = temp_dir / output_name
 
-        command = build_pandoc_command(main_rel, output_name, output_format)
+        command = build_pandoc_command(main_rel, output_name, output_format, template_path)
         result = run_pandoc(command, temp_dir)
 
         if result.returncode != 0 or not output_path.exists():
