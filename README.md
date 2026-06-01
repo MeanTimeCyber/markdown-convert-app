@@ -6,7 +6,7 @@ Simple, containerised web app for converting markdown to DOCX or PDF using pando
 
 Built using GitHub Copilot. As sensibly as possible, but still only suitable for running locally or on a private network.
 
-Currently there's no styling in a generate PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
+Currently there's no styling in a generated PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
 
 ## What this includes
 
