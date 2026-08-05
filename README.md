@@ -7,7 +7,7 @@ Simple, containerised web app for converting markdown to DOCX or PDF using [pand
 Ideal for running locally to convert reports and notes, without having to install or learn to use pandoc.
 
 > [!CAUTION]
-> Built entirely using GitHub Copilot. As sensibly as possible, but this project is still only suitable for running locally or on a private network, especially with the hard-coded requirements. Mean Time Cyber does not ever recommend running third-party vibe-coded apps on the internet.
+> Built entirely using GitHub Copilot. As sensibly as possible, but this project is still only suitable for running locally or on a private network, especially with the hard-coded requirements. Mean Time Cybersecurity does not ever recommend running third-party vibe-coded apps directly on the internet.
 
 ## What this includes
 
