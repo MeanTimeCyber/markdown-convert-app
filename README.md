@@ -4,7 +4,8 @@ Simple, containerised web app for converting markdown to DOCX or PDF using pando
 
 ![app screenshot](app_screenshot.png)
 
-Built using GitHub Copilot. As sensibly as possible, but still only suitable for running locally or on a private network.
+> [!CAUTION]
+> Built entirely using GitHub Copilot. As sensibly as possible, but this project is still only suitable for running locally or on a private network, especially with the hard-coded requirements. Mean Time Cyber does not ever recommend running third-party vibe-coded apps on the internet.
 
 Currently there's no styling in a generated PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
 
@@ -20,32 +21,36 @@ Currently there's no styling in a generated PDF. We'll have to add some LaTeX so
 ## Run with Docker
 
 1. Build TeX base image (slow, done rarely):
-
+```bash
    docker build -f Dockerfile.base -t md-convert-base:latest .
-
+```
 2. Build app image (fast, done frequently):
-
+```bash
    docker build -t md-convert .
-
+```
 3. Run container:
-
+```bash
    docker run --rm -p 8000:8000 md-convert
-
+```
 4. Production-style hardened run:
-
+```bash
    docker run --rm -p 8000:8000 \
      --read-only \
      --tmpfs /app/tmp:rw,noexec,nosuid,size=256m \
      --cap-drop ALL \
      --security-opt no-new-privileges \
      md-convert
+```
 
 5. Run with a template document:
 
-   docker run --rm -p 8000:8000 \
-     -v /path/to/your/template.docx:/template.docx \
-     -e TEMPLATE_DOC_PATH=/template.docx \
-     md-convert
+```bash
+    docker run --rm -p 8000:8000 \
+       -v /path/to/your/template.docx:/template.docx \
+       -e TEMPLATE_DOC_PATH=/template.docx \
+       md-convert
+```
+
 
 6. Open browser:
 
