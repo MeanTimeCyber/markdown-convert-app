@@ -1,13 +1,13 @@
 # Overview
 
-Simple, containerised web app for converting markdown to DOCX or PDF using pandoc.
+Simple, containerised web app for converting markdown to DOCX or PDF using [pandoc](https://pandoc.org/).
 
 ![app screenshot](app_screenshot.png)
 
+Ideal for running locally to convert reports and notes, without having to install or learn to use pandoc.
+
 > [!CAUTION]
 > Built entirely using GitHub Copilot. As sensibly as possible, but this project is still only suitable for running locally or on a private network, especially with the hard-coded requirements. Mean Time Cyber does not ever recommend running third-party vibe-coded apps on the internet.
-
-Currently there's no styling in a generated PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
 
 ## What this includes
 
@@ -18,6 +18,10 @@ Currently there's no styling in a generated PDF. We'll have to add some LaTeX so
 - Multi-file upload for referenced assets
 - Docker setup with pandoc and full TeX Live for broad PDF compatibility
 
+## What it doesn't include
+Currently there's no styling in a generated PDF. We'll have to add some LaTeX soon. For that reason, there's an option to leave out PDF generation from the app container, which results in a 95% smaller docker image as the PDF engine is about 7GB.
+
+# Running
 ## Run with Docker
 
 1. Build TeX base image (slow, done rarely):
